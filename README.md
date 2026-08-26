@@ -1,7 +1,3 @@
-Absolutely. Since this is your **Infosys Springboard internship Milestone 1**, I’d make the README look professional but **not overclaim features that you haven't implemented yet**.
-
-Create `README.md` in VS Code and paste this:
-
 # 🤖 AI Response Validation System with Hallucination Detection Assistance
 
 > An AI-powered response evaluation system designed to assess the reliability, relevance, factual correctness, and groundedness of Large Language Model (LLM) responses using Retrieval-Augmented Generation (RAG) and established evaluation techniques.
