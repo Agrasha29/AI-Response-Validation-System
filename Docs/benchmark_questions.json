@@ -1,0 +1,47 @@
+[
+  {
+    "id": "Q001",
+    "question": "What is Python?",
+    "response": "Python is a high-level programming language commonly used for web development, data science, automation, and artificial intelligence.",
+    "reference_answer": "Python is a high-level, general-purpose programming language.",
+    "expected_relevance": 5,
+    "expected_accuracy": 5,
+    "expected_hallucination": false
+  },
+  {
+    "id": "Q002",
+    "question": "Who created Python?",
+    "response": "Python was created by James Gosling in 1991.",
+    "reference_answer": "Python was created by Guido van Rossum and first released in 1991.",
+    "expected_relevance": 5,
+    "expected_accuracy": 2,
+    "expected_hallucination": true
+  },
+  {
+    "id": "Q003",
+    "question": "What is machine learning?",
+    "response": "Machine learning is a branch of artificial intelligence where systems learn patterns from data.",
+    "reference_answer": "Machine learning is a field of artificial intelligence that enables systems to learn patterns from data and make predictions or decisions.",
+    "expected_relevance": 5,
+    "expected_accuracy": 5,
+    "expected_hallucination": false
+  },
+  {
+    "id": "Q004",
+    "question": "What is machine learning?",
+    "response": "The capital of France is Paris.",
+    "reference_answer": "Machine learning is a field of artificial intelligence that enables systems to learn from data.",
+    "expected_relevance": 1,
+    "expected_accuracy": 1,
+    "expected_hallucination": true
+  },
+  {
+    "id": "Q005",
+    "question": "What is the capital of France?",
+    "response": "The capital of France is Paris and France is located in Europe.",
+    "reference_answer": "The capital of France is Paris.",
+    "expected_relevance": 5,
+    "expected_accuracy": 5,
+    "expected_hallucination": false
+  }
+]

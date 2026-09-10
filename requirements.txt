@@ -7,3 +7,8 @@ ragas
 trulens
 pandas
 numpy
+google-genai
+pydantic
+python-dotenv
+scikit-learn
+pytest
