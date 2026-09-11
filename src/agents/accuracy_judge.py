@@ -5,7 +5,7 @@ from src.llm_client import generate_structured
 
 
 class AccuracyResult(BaseModel):
-    accuracy_score: Literal[1, 2, 3, 4, 5] = Field(
+    accuracy_score: Literal["1", "2", "3", "4", "5"] = Field(
         description="Accuracy score from 1 to 5."
     )
 
