@@ -3,6 +3,8 @@ from typing import Dict, Optional
 from src.agents.relevance_judge import evaluate_relevance
 from src.agents.accuracy_judge import evaluate_accuracy
 from src.agents.hallucination_detector import detect_hallucinations
+from src.agents.completeness_judge import evaluate_completeness
+from src.agents.verdict_agent import generate_verdict
 
 
 class EvaluationOrchestrator:
@@ -48,7 +50,29 @@ class EvaluationOrchestrator:
         )
 
         # ---------------------------
-        # Final Evaluation
+        # 4. Completeness Evaluation
+        # ---------------------------
+
+        completeness_result = evaluate_completeness(
+            question=question,
+            response=response,
+            reference_answer=reference_answer,
+            source_context=source_context
+        )
+
+        # ---------------------------
+        # 5. Overall Verdict
+        # ---------------------------
+
+        verdict_result = generate_verdict(
+            relevance=relevance_result,
+            accuracy=accuracy_result,
+            hallucination=hallucination_result,
+            completeness=completeness_result
+        )
+
+        # ---------------------------
+        # Final Evaluation Result
         # ---------------------------
 
         return {
@@ -59,6 +83,9 @@ class EvaluationOrchestrator:
 
             "accuracy": accuracy_result.model_dump(),
 
-            "hallucination": hallucination_result.model_dump()
+            "hallucination": hallucination_result.model_dump(),
+
+            "completeness": completeness_result.model_dump(),
+
+            "verdict": verdict_result.model_dump()
         }
-    
