@@ -1,0 +1,9 @@
+test_id,question,ai_response,expected_scenario
+TC-01,What is Python?,"Python is a high-level programming language.",Correct
+TC-02,Who created Python?,"Python was created by James Gosling.",Incorrect
+TC-03,What is Python and who created it?,"Python is a programming language.",Incomplete
+TC-04,What is Python?,"The capital of France is Paris.",Irrelevant
+TC-05,Who created Python?,"Python was created by Guido van Rossum in 1989 and invented by NASA.",Unsupported
+TC-06,What is Python used for?,"Python is used for AI, data science, automation and web development.",Correct
+TC-07,Explain Python and its creator.,"Python is a language. It was created by Guido van Rossum, James Gosling, NASA and Microsoft.",Multiple Hallucinations
+TC-08,What is Python and when was it released?,"Python is a programming language.",Missing Information

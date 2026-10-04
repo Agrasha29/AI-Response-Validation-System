@@ -13,6 +13,7 @@ python-dotenv
 scikit-learn
 pytest
 streamlit
+reportlab
 
 
 

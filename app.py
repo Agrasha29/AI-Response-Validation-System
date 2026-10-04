@@ -3,6 +3,10 @@ import streamlit as st
 
 from src.evaluation.orchestrator import EvaluationOrchestrator
 from src.evaluation.batch_evaluator import BatchEvaluator
+from src.reporting.pdf_report import (
+    generate_single_evaluation_pdf,
+    generate_batch_evaluation_pdf
+)
 
 
 # ==========================================================
@@ -23,7 +27,7 @@ st.set_page_config(
 def make_display_safe(value):
     """
     Convert complex Python objects into strings so that
-    Streamlit/PyArrow can safely display them in a dataframe.
+    Streamlit/PyArrow can safely display them.
     """
 
     if value is None:
@@ -34,13 +38,13 @@ def make_display_safe(value):
 
     if isinstance(value, list):
         return "\n".join(
-            make_display_safe(item)
+            str(make_display_safe(item))
             for item in value
         )
 
     if isinstance(value, tuple):
         return "\n".join(
-            make_display_safe(item)
+            str(make_display_safe(item))
             for item in value
         )
 
@@ -55,8 +59,8 @@ def make_display_safe(value):
 
 def make_dataframe_display_safe(df):
     """
-    Convert all complex/object values in a dataframe into
-    strings that Arrow can safely render.
+    Convert all complex/object values in a dataframe
+    into strings that Arrow can safely render.
     """
 
     display_df = df.copy()
@@ -89,7 +93,10 @@ st.sidebar.header("⚙️ Evaluation Mode")
 
 mode = st.sidebar.radio(
     "Choose evaluation mode:",
-    ["Single Evaluation", "Batch CSV Evaluation"]
+    [
+        "Single Evaluation",
+        "Batch CSV Evaluation"
+    ]
 )
 
 
@@ -121,7 +128,10 @@ if mode == "Single Evaluation":
         placeholder="Optional source/context information..."
     )
 
-    if st.button("🔍 Evaluate Response", type="primary"):
+    if st.button(
+        "🔍 Evaluate Response",
+        type="primary"
+    ):
 
         if not question.strip():
 
@@ -292,7 +302,10 @@ if mode == "Single Evaluation":
 
                     st.write(
                         make_display_safe(
-                            verdict.get("reasoning", "")
+                            verdict.get(
+                                "reasoning",
+                                ""
+                            )
                         )
                     )
 
@@ -533,6 +546,33 @@ if mode == "Single Evaluation":
                             )
                         )
 
+                    # ==================================================
+                    # PDF REPORT
+                    # ==================================================
+
+                    st.subheader("📄 PDF Report")
+
+                    pdf_result = dict(result)
+
+                    pdf_result["reference_answer"] = (
+                        reference_answer
+                    )
+
+                    pdf_result["source_context"] = (
+                        source_context
+                    )
+
+                    pdf_file = generate_single_evaluation_pdf(
+                        pdf_result
+                    )
+
+                    st.download_button(
+                        label="📥 Download PDF Report",
+                        data=pdf_file,
+                        file_name="ai_response_evaluation_report.pdf",
+                        mime="application/pdf"
+                    )
+
                 except Exception as error:
 
                     st.error(
@@ -742,151 +782,176 @@ Optional columns:
                     )
 
                 # ==================================================
-                # STATISTICS
+                # M4 EVALUATION SCORING DASHBOARD
                 # ==================================================
 
                 stats = batch_result.statistics
+                successful_results = [
+                    item for item in batch_result.results
+                    if item.get("verdict") in {"Pass", "Needs Improvement", "Fail"}
+                ]
 
-                st.subheader("📈 Aggregate Statistics")
+                st.subheader("📊 Evaluation Scoring Dashboard")
 
-                stat_col1, stat_col2, stat_col3, stat_col4 = (
-                    st.columns(4)
-                )
+                # KPI CARDS
+                total_rows = batch_result.total_rows
+                successful_rows = batch_result.successful_rows
+                failed_rows = batch_result.failed_rows
+                pass_count = sum(1 for item in successful_results if item.get("verdict") == "Pass")
+                needs_count = sum(1 for item in successful_results if item.get("verdict") == "Needs Improvement")
+                fail_count = sum(1 for item in successful_results if item.get("verdict") == "Fail")
 
-                with stat_col1:
+                pass_rate = (pass_count / successful_rows * 100) if successful_rows else 0
+                quality_score = stats.get("average_overall_score", 0)
 
-                    st.metric(
-                        "Avg Relevance",
-                        f"{stats.get('average_relevance', 0):.2f}/5"
+                k1, k2, k3, k4, k5 = st.columns(5)
+                with k1:
+                    st.metric("Total Responses", total_rows)
+                with k2:
+                    st.metric("Successful", successful_rows)
+                with k3:
+                    st.metric("Failed", failed_rows)
+                with k4:
+                    st.metric("Pass Rate", f"{pass_rate:.1f}%")
+                with k5:
+                    st.metric("Average Quality", f"{quality_score:.2f}/5")
+
+                # VERDICT RATES
+                st.markdown("### ⚖️ Verdict Rates")
+                verdict_rate_df = pd.DataFrame({
+                    "Verdict": ["Pass", "Needs Improvement", "Fail"],
+                    "Count": [pass_count, needs_count, fail_count],
+                    "Rate (%)": [
+                        (pass_count / successful_rows * 100) if successful_rows else 0,
+                        (needs_count / successful_rows * 100) if successful_rows else 0,
+                        (fail_count / successful_rows * 100) if successful_rows else 0,
+                    ],
+                })
+                st.dataframe(verdict_rate_df, use_container_width=True, hide_index=True)
+                if successful_results:
+                    st.bar_chart(verdict_rate_df.set_index("Verdict")["Rate (%)"])
+
+                # DIMENSION QUALITY OVERVIEW
+                st.markdown("### 📈 Quality Overview")
+                q1, q2, q3, q4, q5 = st.columns(5)
+                with q1:
+                    st.metric("Avg Relevance", f"{stats.get('average_relevance', 0):.2f}/5")
+                with q2:
+                    st.metric("Avg Accuracy", f"{stats.get('average_accuracy', 0):.2f}/5")
+                with q3:
+                    st.metric("Avg Completeness", f"{stats.get('average_completeness', 0):.2f}/5")
+                with q4:
+                    st.metric("Avg Hallucination", f"{stats.get('average_hallucination', 0):.2f}/5")
+                with q5:
+                    hallucination_count = sum(
+                        1 for item in successful_results
+                        if bool(item.get("hallucination_detected"))
                     )
+                    hallucination_rate = (hallucination_count / successful_rows * 100) if successful_rows else 0
+                    st.metric("Hallucination Rate", f"{hallucination_rate:.1f}%")
 
-                with stat_col2:
+                # AVERAGE DIMENSION SCORES
+                st.markdown("### 📊 Average Dimension Scores")
+                dimension_data = pd.DataFrame({
+                    "Dimension": ["Relevance", "Accuracy", "Completeness", "Hallucination"],
+                    "Average Score": [
+                        stats.get("average_relevance", 0),
+                        stats.get("average_accuracy", 0),
+                        stats.get("average_completeness", 0),
+                        stats.get("average_hallucination", 0),
+                    ],
+                })
+                st.bar_chart(dimension_data.set_index("Dimension"))
 
-                    st.metric(
-                        "Avg Accuracy",
-                        f"{stats.get('average_accuracy', 0):.2f}/5"
-                    )
-
-                with stat_col3:
-
-                    st.metric(
-                        "Avg Completeness",
-                        f"{stats.get('average_completeness', 0):.2f}/5"
-                    )
-
-                with stat_col4:
-
-                    st.metric(
-                        "Avg Hallucination",
-                        f"{stats.get('average_hallucination', 0):.2f}/5"
-                    )
-
-                # ==================================================
                 # VERDICT DISTRIBUTION
-                # ==================================================
+                st.markdown("### 🥧 Verdict Distribution")
+                if successful_results:
+                    verdict_counts = pd.DataFrame({
+                        "Verdict": ["Pass", "Needs Improvement", "Fail"],
+                        "Count": [pass_count, needs_count, fail_count],
+                    })
+                    st.bar_chart(verdict_counts.set_index("Verdict"))
+                else:
+                    st.info("No successful evaluations available for verdict distribution.")
 
-                st.subheader("⚖️ Verdict Distribution")
+                # QUALITY TREND ACROSS CURRENT BATCH
+                st.markdown("### 📉 Quality Trend — Current Batch")
+                if successful_results:
+                    trend_rows = []
+                    for index, item in enumerate(successful_results, start=1):
+                        trend_rows.append({
+                            "Response": index,
+                            "Overall Score": float(item.get("overall_score", 0) or 0),
+                            "Relevance": float(item.get("relevance_score", 0) or 0),
+                            "Accuracy": float(item.get("accuracy_score", 0) or 0),
+                            "Completeness": float(item.get("completeness_score", 0) or 0),
+                            "Hallucination": float(item.get("hallucination_score", 0) or 0),
+                        })
+                    trend_df = pd.DataFrame(trend_rows).set_index("Response")
+                    st.line_chart(trend_df)
+                    st.caption("Trend is calculated in the order of successful responses in the uploaded CSV. Historical cross-batch trends require persistent storage.")
+                else:
+                    st.info("No successful evaluations available for trend analysis.")
 
+                # DETAILED RESULTS
+                st.markdown("### 📋 Detailed Evaluation Results")
                 if batch_result.results:
-
-                    verdict_series = pd.Series(
-                        [
-                            item.get("verdict")
-                            for item in batch_result.results
-                            if item.get("verdict")
-                        ]
+                    results_df = pd.DataFrame(batch_result.results)
+                    display_results_df = make_dataframe_display_safe(results_df)
+                    st.dataframe(
+                        display_results_df,
+                        use_container_width=True,
+                        hide_index=True
                     )
+                else:
+                    st.warning("No evaluation results were generated.")
 
-                    if not verdict_series.empty:
-
-                        verdict_counts = (
-                            verdict_series
-                            .value_counts()
-                            .rename_axis("Verdict")
-                            .reset_index(name="Count")
-                        )
-
-                        st.bar_chart(
-                            verdict_counts,
-                            x="Verdict",
-                            y="Count"
-                        )
-
-                # ==================================================
-                # DIMENSION SCORES
-                # ==================================================
-
-                st.subheader(
-                    "📊 Average Dimension Scores"
-                )
-
-                dimension_data = pd.DataFrame(
-                    {
-                        "Dimension": [
-                            "Relevance",
-                            "Accuracy",
-                            "Completeness",
-                            "Hallucination"
-                        ],
-                        "Average Score": [
-                            stats.get(
-                                "average_relevance",
-                                0
-                            ),
-                            stats.get(
-                                "average_accuracy",
-                                0
-                            ),
-                            stats.get(
-                                "average_completeness",
-                                0
-                            ),
-                            stats.get(
-                                "average_hallucination",
-                                0
-                            )
-                        ]
-                    }
-                )
-
-                st.bar_chart(
-                    dimension_data,
-                    x="Dimension",
-                    y="Average Score"
-                )
-
-                # ==================================================
                 # FAILED EVALUATIONS
-                # ==================================================
-
                 failed_results = [
-                    item
-                    for item in batch_result.results
-                    if item.get("verdict")
-                    == "Evaluation Error"
+                    item for item in batch_result.results
+                    if item.get("verdict") == "Evaluation Error"
                 ]
 
                 if failed_results:
-
-                    st.subheader(
-                        "❌ Failed Evaluations"
-                    )
-
-                    failed_df = pd.DataFrame(
-                        failed_results
-                    )
-
-                    failed_display_df = (
-                        make_dataframe_display_safe(
-                            failed_df
-                        )
-                    )
-
+                    st.subheader("❌ Failed Evaluations")
+                    failed_df = pd.DataFrame(failed_results)
+                    failed_display_df = make_dataframe_display_safe(failed_df)
                     st.dataframe(
                         failed_display_df,
                         use_container_width=True,
                         hide_index=True
                     )
+
+                # ==========================================================
+                # BATCH PDF REPORT
+                # ==========================================================
+
+                st.subheader("📄 Batch PDF Report")
+
+                batch_pdf_payload = {
+                    "total_rows": batch_result.total_rows,
+                    "successful_rows": batch_result.successful_rows,
+                    "failed_rows": batch_result.failed_rows,
+                    "statistics": batch_result.statistics,
+                    "results": batch_result.results,
+                }
+
+                batch_pdf_file = generate_batch_evaluation_pdf(
+                    batch_pdf_payload
+                )
+
+                st.download_button(
+                    label="📥 Download Batch PDF Report",
+                    data=batch_pdf_file,
+                    file_name="batch_ai_response_evaluation_report.pdf",
+                    mime="application/pdf",
+                    key="download_batch_pdf_report"
+                )
+
+
+
+
+                    
 
         except Exception as error:
 
