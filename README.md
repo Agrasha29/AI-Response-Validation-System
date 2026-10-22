@@ -8,9 +8,6 @@ An AI-powered evaluation platform that assesses Large Language Model (LLM) respo
 
 ---
 
-## ⭐Deployed project link :-
-https://ai-response-validation-system.streamlit.app/
-
 ## 📌 Table of Contents
 
 - [Overview](#-overview)
